@@ -1,0 +1,19 @@
+---
+kind: ConfigMap 
+apiVersion: v1 
+metadata:
+  name: flexdirect-conf
+  #namespace: kube-system
+data:
+  # Configuration values can be set as key-value properties
+  TOKENMGR_URL: 'http://tokenmgr.bitfusion:8080/api/token'
+  GPUTYPES: 'K80_servers M60_servers v100_servers'
+  K80_servers_1:  172.16.31.42:56001
+  K80_servers_2:  172.16.31.43:56001
+  K80_servers_3:  172.16.31.44:56001
+  M60_servers_1:  172.16.22.12:56001
+  M60_servers_2:  172.16.22.13:56001
+  M60_servers_3:  172.16.22.14:56001
+  v100_servers_1: 172.16.21.22:53334
+  v100_servers_2: 172.16.21.23:53334
+  v100_servers_3: 172.16.21.24:53334

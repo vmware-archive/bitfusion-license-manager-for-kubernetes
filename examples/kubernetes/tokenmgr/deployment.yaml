@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tokenmgr
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: tokenmgr
+  template:
+    metadata:
+      labels:
+        app: tokenmgr
+    spec:
+      containers:
+      - name: tokenmgr
+        image: tokenmgr:1.0.0
+        command: ["/token"]
+        ports:
+        - name: tokenmgr
+          containerPort: 8080       
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/stats
+            port: tokenmgr
+        readinessProbe:
+          httpGet:
+            path: /api/stats
+            port: tokenmgr
+        resources:
+          {}

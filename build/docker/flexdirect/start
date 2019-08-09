@@ -1,0 +1,166 @@
+#!/bin/bash
+#vi: autoindent:tabstop=2 shiftwidth=2 softtabstop=2 expandtab
+#
+# Copyright (c) 2019 VMware, Inc. All Rights Reserved.
+# Author: Tom Hite (thite@vmware.com)
+#
+# SPDX-License-Identifier: https://spdx.org/licenses/MIT.html
+#
+# To get a valid server.conf, make sure the environment holds
+# all necessary host information. For example, the following
+# sample ENV provides for three GPU types for servers.conf:
+#
+# GPUTYPES="K80_servers M60_servers v100_servers"
+#
+# K80_servers_1=172.16.31.42:56001
+# K80_servers_2=172.16.31.43:56001
+# K80_servers_3=172.16.31.44:56001
+#
+# M60_servers_1=172.16.22.12:56001
+# M60_servers_2=172.16.22.13:56001
+# M60_servers_3=172.16.22.14:56001
+#
+# v100_servers_1=172.16.21.22:53334
+# v100_servers_2=172.16.21.23:53334
+# v100_servers_3=172.16.21.24:53334
+#
+
+# the url to the token (mutex) service -- asumes bitfusion namespace
+TOKENMGR_URL=${TOKENMGR_URL:=http://tokenmgr.bitfusion:8080/api/token}
+USURPLOCK=""
+
+usage() {
+  echo "usage: $0 daemonset|run"
+  exit $1
+}
+
+# This just logs things periodically so loggers sinks see it up
+run_forever() {
+  while true; do
+    if [ -n "$1" ]; then
+      if [ -f /etc/bitfusionio/lic/host_id ]; then
+        echo "$(date): On host_id \"$(cat /etc/bitfusionio/lic/host_id)\":"
+      fi
+      echo "$(date): $1"
+    fi
+    sleep 60
+
+    # keep the lock on the license directory
+    echo "$(hostname)" >"${USURPLOCK}"
+  done
+}
+
+# Request a lock (mutex) for sole access to scan the directories and
+# potentially usurp a license for the node on which this instance runs.
+get_lock_id() {
+  curl -s ${TOKENMGR_URL}/lock/5 | jq -r .id
+}
+
+# Release the lock (mutex) so others can hunt and usurp licenses
+release_lock_id() {
+  curl -X POST -s ${TOKENMGR_URL}/release/$1
+}
+  
+# Scan licences for any that are 'stale' (which means no one has locked
+# it for 20 seconds or so). If any are found, usurp one for this node.
+setup_directories() {
+  local id=$(get_lock_id)
+  local now=$(date "+%s")
+  local bfmodsecs=$now # just for safety
+  local usurp=false
+
+  if [ -z "$id" -o "$id" == "null" ]; then
+    echo "Fail: counld not obain token lock for license scanning."
+    exit 1
+  fi
+
+  # log the content of /mnt for easy debugging
+  echo "Contents of /mnt licenses directory:"
+  ls -ls /mnt
+  ls -lsR /mnt/bitfusionio
+
+  # loop through licenses until we can usurp one or die
+  for d in $(ls -d /mnt/bitfusionio/*); do
+   if [ -d "${d}" ]; then
+     echo "WARN: Considering usurp of license directory at ${d}."
+
+     USURPLOCK=${d}/lockedby
+     if [ -f "${d}/lockedby" ]; then
+       # test the locked file for latest usage and if too old, try to usurp it
+       bfmodsecs=$(stat -c %Y "${USURPLOCK}")
+       diffsecs=$(($now - $bfmodsecs))
+       echo "INFO: ${USURPLOCK} was modified ${diffsecs} seconds ago."
+       if [ $diffsecs -gt 20 ]; then
+         echo "INFO: Trying to usurp."
+         usurp=true
+       fi
+     else
+       echo "INFO: Trying to usurp."
+       usurp=true
+     fi
+     if $usurp; then
+       echo "$(hostname)" >"${USURPLOCK}"
+       cp -a "${d}/." "/etc/bitfusionio/."
+       break;
+     fi
+   fi
+  done
+
+  # release the token lock
+  release_lock_id ${id}
+
+  # Give the appropriate notice
+  if $usurp; then
+   echo "WARN: Usurped ${d} bitfusion license directory."
+  else
+    echo "ERROR: No licenses to usurp -- Aborting!"
+    exit 1
+ fi
+}
+
+# Assuming a license was usurped, setup the access confuration
+# for GPU access by containers.
+setup_conf() {
+  local t
+  local i
+  rm -f /etc/bitfusionio/servers.conf
+  for t in ${GPUTYPES}; do
+    echo "### ${t}.conf" >>/etc/bitfusionio/servers.conf
+    for ((i=1;i<1000;i++)); do
+      var="${t}_${i}"
+      echo "Adding server config for ${var} at ${!var}."
+      if [ -z "${!var}" ]; then
+        echo "Completed config for ${t} GPU servers (at ${var} because it was empty)."
+        break
+      fi
+      echo ${!var} >>/etc/bitfusionio/servers.conf
+    done
+    echo "" >>/etc/bitfusionio/servers.conf
+  done
+}
+
+# wrapper to call the appropriate setup functions
+setupfd() {
+  setup_directories
+  setup_conf
+}
+  
+#
+# Main code
+#
+case $1 in
+daemonset)
+  setupfd
+  run_forever "FlexDirect daemonset container still running."
+  ;;
+run)
+  run_forever "The \"run\" command is not implemented yet."
+  ;;
+help)
+  usage 0
+  ;;
+*)
+  usage 1
+  ;;
+esac
+

@@ -1,0 +1,9 @@
+*.log
+*.a
+*.so
+*.swp
+
+cmd/token/token
+cmd/token/token-darwin
+build/docker/token/token
+build/docker/token/html

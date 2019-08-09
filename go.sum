@@ -1,0 +1,6 @@
+github.com/ant0ine/go-json-rest v3.3.2+incompatible h1:nBixrkLFiDNAW0hauKDLc8yJI6XfrQumWvytE1Hk14E=
+github.com/ant0ine/go-json-rest v3.3.2+incompatible/go.mod h1:q6aCt0GfU6LhpBsnZ/2U+mwe+0XB5WStbmwyoPfc+sk=
+github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b h1:gQZ0qzfKHQIybLANtM3mBXNUtOfsCFXeTsnBqCsx1KM=
+github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
+github.com/stretchr/graceful v1.2.15 h1:vmXbwPGfe8bI6KkgmHry/P1Pk63bM3TDcfi+5mh+VHg=
+github.com/stretchr/graceful v1.2.15/go.mod h1:IxdGAOTZueMKoBr3oJIzdeg5CCCXbHXfV44sLhfAXXI=

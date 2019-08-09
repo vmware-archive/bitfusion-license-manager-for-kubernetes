@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: flexdirect
+  labels:
+    name: flexdirect
+spec:
+  selector:
+    matchLabels:
+      name: flexdirect
+  template:
+    metadata:
+      labels:
+        name: flexdirect
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: "DoesNotExist"
+      containers:
+      - name: flexdirect
+        image: flexdirect:1.0.0
+        command: ["/start", "daemonset"]
+        envFrom:
+        - configMapRef:
+            name: flexdirect-conf
+        resources:
+          limits:
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: flexdirect-licenses
+          mountPath: /mnt
+          readOnly: false
+        - name: bitfusionio
+          mountPath: /etc/bitfusionio
+          readOnly: false
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: flexdirect-licenses
+        persistentVolumeClaim:
+          claimName: flexdirect-licenses
+      - name: bitfusionio
+        hostPath:
+          path: /etc/bitfusionio
+          type: DirectoryOrCreate
