@@ -9,11 +9,14 @@ The microservice consists of two components:
 1. A [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset) that manages and reservices bitfusion pre-created licenses; and
 1. A [Service](https://kubernetes.io/docs/concepts/services-networking/service) and supporting [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment) that provides for a remote mutex lock request.
 
-The gist of operations is as follows:
+The gist of operations is as depicted by the image below and the subsequent
+comments:
 
-The DaemonSet provides that a License Holder process (pod in this case) executes on all worker
-nodes of a cluster into which it is deployed. The process therein has a
-responsibility to request a mutex lock on a [Persistent
+![Operational Overview](images/operations_overview.png)
+
+The DaemonSet provides that a License Holder process (pod in this case)
+executes on all worker nodes of a cluster into which it is deployed. The
+process therein has a responsibility to request a mutex lock on a [Persistent
 Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes) that
 contains a set of Bitfusion licenses, one per subdirectory on that volume.
 
@@ -28,6 +31,27 @@ more than mount the /etc/bitfusionio as a
 [hostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) to
 the container's /etc/bitfusionio directory to be appropriately licensed to take
 advantage of the GPU.
+
+
+Note that the daemonset pods assume that the flexdirect licenses, as having
+already been created by separate "flexdirect init" runs, are expected to be in
+the "/bitsutionio/" directory of the persistent volume. That is mounted under
+/mnt in the container, which scans "/mnt/bitfusionio/" for all licenses
+(subdirectories).
+
+To create those directories, you would normally run something of the form:
+
+    flexdirect init -e Yes -l "..."
+
+on a virtual machine where no /etc/bitfusionio exists and then copy the
+resultant /etc/bitfusionio dorectory to the persistent volume, as in somthing
+like:
+
+    cp -a /etc/bitfusionio /mnt/bitfusionio/license-n
+
+assuming you have mounted the persistent storage in your license-creating VM at
+/mnt. Note, though, that each license must be in a separate directory, so
+change the value of ```n``` in ```license-n``` above.
 
 ## Try it out
 To try out bitfusion-license-manager-for-kubernetes, it must be built and
