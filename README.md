@@ -6,7 +6,7 @@ on [Kubernetes](https://kubernetes.io).
 
 The microservice consists of two components:
 
-1. A [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset) that manages and reservices bitfusion pre-created licenses; and
+1. A [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset) that manages and reserves bitfusion pre-created licenses; and
 1. A [Service](https://kubernetes.io/docs/concepts/services-networking/service) and supporting [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment) that provides for a remote mutex lock request.
 
 The gist of operations is as depicted by the image below and the subsequent
@@ -14,11 +14,12 @@ comments:
 
 ![Operational Overview](images/operations_overview.png)
 
-The DaemonSet provides that a License Holder process (pod in this case)
-executes on all worker nodes of a cluster into which it is deployed. The
-process therein has a responsibility to request a mutex lock on a [Persistent
+The DaemonSet provides that a License Holder process (pod) executes on all
+worker nodes of a cluster into which it is deployed. The process therein has a
+responsibility to request a mutex lock on a [Persistent
 Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes) that
-contains a set of Bitfusion licenses, one per subdirectory on that volume.
+contains a set of Bitfusion licenses, one per subdirectory, under the
+"./bitfusionio" directory in that volume.
 
 Once a lock is obtained, the License Holder process scans the subdirectories to
 find a license that is not currently locked by another License Holder (pod). If
@@ -26,12 +27,11 @@ one is found, the process locks (reserves) the license for its use and copies
 it to the worker node's /etc/bitfusionio directory.
 
 The reason for copying the license to the /etc/bitfusionio directory is so that
-pod containers needing to utilize FlexDirect for access to GPUs need do nothing
-more than mount the /etc/bitfusionio as a
+pod containers seeking to utilize FlexDirect for access to GPUs need do nothing
+more than mount the worker nodes's /etc/bitfusionio as a
 [hostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath) to
 the container's /etc/bitfusionio directory to be appropriately licensed to take
 advantage of the GPU.
-
 
 Note that the daemonset pods assume that the flexdirect licenses, as having
 already been created by separate "flexdirect init" runs, are expected to be in
@@ -44,8 +44,7 @@ To create those directories, you would normally run something of the form:
     flexdirect init -e Yes -l "..."
 
 on a virtual machine where no /etc/bitfusionio exists and then copy the
-resultant /etc/bitfusionio dorectory to the persistent volume, as in somthing
-like:
+resultant /etc/bitfusionio directory to the persistent volume, for example:
 
     cp -a /etc/bitfusionio /mnt/bitfusionio/license-n
 
@@ -111,8 +110,8 @@ container, you must provide a container name for pushing to a registry.
 That will build two containers on the local Docker service: flexdirect and
 tokenmgr. The former is the container used by the DaemonSet to establish pods
 on all worker nodes. The latter is the container used for the locking (mutex)
-service that the flexdirect pods ultimate request in order to have sole access
-to scan the licenses.
+service that the flexdirect pods ultimately request in order to have sole
+access to scan the licenses.
 
 #### Run
 To run the microservice, you should register the two new containers with your
