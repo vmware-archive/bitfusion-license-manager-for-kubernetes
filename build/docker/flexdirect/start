@@ -43,7 +43,7 @@ run_forever() {
       fi
       echo "$(date): $1"
     fi
-    sleep 60
+    sleep 10
 
     # keep the lock on the license directory
     echo "$(hostname)" >"${USURPLOCK}"
